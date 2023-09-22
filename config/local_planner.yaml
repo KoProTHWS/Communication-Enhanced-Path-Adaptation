@@ -1,10 +1,10 @@
 robot_description: "robot_description"
 trajectory_operator_plugin_name: "moveit_hybrid_planning/SimpleSampler"
 local_constraint_solver_plugin_name: "moveit_hybrid_planning/ForwardTrajectory"
-local_planning_frequency: 100.0
+local_planning_frequency: 10.0
 global_solution_topic: "global_trajectory"
-local_solution_topic: "/scaled_joint_trajectory_controller/joint_trajectory"
-local_solution_topic_type: "trajectory_msgs/msg/JointTrajectory"
+local_solution_topic: "/forward_position_controller/commands"
+local_solution_topic_type: "std_msgs/Float64MultiArray"
 publish_joint_positions: true
 publish_joint_velocities: false
 group_name: "ur_manipulator"
