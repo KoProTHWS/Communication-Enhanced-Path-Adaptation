@@ -440,8 +440,8 @@ def generate_launch_description(*args, **kwargs):
     #)
     demonode = Node(
         package="arc_hybrid_planner",
-        executable="hybrid_planning_demo_node",
-        name="hybrid_planning_demo_node",
+        executable="hybrid_planning_interface_test",
+        name="hybrid_planning_interface_test",
         output="screen",
         parameters=[
             robot_description,

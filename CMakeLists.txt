@@ -42,6 +42,9 @@ include_directories(include)
 add_executable(hybrid_planning_demo_node src/hybrid_planning_demo_node.cpp)
 ament_target_dependencies(hybrid_planning_demo_node ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
+add_executable(hybrid_planning_interface_test src/main.cpp src/hybrid_planning_interface.cpp)
+ament_target_dependencies(hybrid_planning_interface_test ${THIS_PACKAGE_INCLUDE_DEPENDS})
+
 add_executable(panda_demo_node test/panda_demo_node.cpp)
 ament_target_dependencies(panda_demo_node ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
@@ -53,6 +56,7 @@ install(DIRECTORY config launch
 install(
   TARGETS
     hybrid_planning_demo_node
+    hybrid_planning_interface_test
     panda_demo_node
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
