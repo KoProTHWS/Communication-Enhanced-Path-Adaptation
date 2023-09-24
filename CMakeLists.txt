@@ -16,6 +16,9 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ArcHumanPose.msg"
   "msg/ArcHumanPosePred.msg"
   "srv/ArcHumanPoseInit.srv"
+  "srv/ArcHybridPlannerMode.srv"
+  "srv/ArcTargetPose.srv"
+  "srv/ArcLoopTarget.srv"
   DEPENDENCIES geometry_msgs std_msgs sensor_msgs
 )
 
