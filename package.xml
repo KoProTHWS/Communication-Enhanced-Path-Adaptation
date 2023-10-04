@@ -14,6 +14,8 @@
   <depend>moveit_hybrid_planning</depend>
   <depend>moveit_task_constructor_core</depend>
   <depend>moveit2_tutorials</depend>
+  <depend>arc_interfaces</depend>
+
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>

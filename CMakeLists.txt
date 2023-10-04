@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(pluginlib REQUIRED)
+find_package(arc_interfaces REQUIRED)
 
 
 set(THIS_PACKAGE_INCLUDE_DEPENDS
@@ -35,6 +36,7 @@ set(THIS_PACKAGE_INCLUDE_DEPENDS
   std_srvs
   tf2_ros
   trajectory_msgs
+  arc_interfaces
 )
 
 include_directories(include)
