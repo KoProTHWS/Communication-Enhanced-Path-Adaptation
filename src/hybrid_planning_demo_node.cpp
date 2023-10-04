@@ -190,7 +190,7 @@ public:
     auto const target_pose = []{
         geometry_msgs::msg::PoseStamped msg;
         msg.header.frame_id = "world";
-        msg.pose.position.x = 0.26;
+        msg.pose.position.x = -0.26;
         msg.pose.position.y = 0.50;
         msg.pose.position.z = 0.3;
 

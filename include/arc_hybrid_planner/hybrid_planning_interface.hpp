@@ -40,22 +40,27 @@
 #include <rclcpp/utilities.hpp>
 #include <rclcpp_action/client_goal_handle.hpp>
 #include <rclcpp_action/create_client.hpp>
+#include "arc_interfaces/srv/arc_target_pose.hpp"
 
 using namespace std::chrono_literals;
 namespace
 {
-const rclcpp::Logger LOGGER = rclcpp::get_logger("test_hybrid_planning_client");
+const rclcpp::Logger LOGGER = rclcpp::get_logger("HPI");
 }
 
 class HybridPlanningInterface
 {
     public:
         HybridPlanningInterface(const rclcpp::Node::SharedPtr& node);
-        void move(const geometry_msgs::msg::PoseStamped& target_pose);
+        bool move(const geometry_msgs::msg::PoseStamped& target_pose);
         geometry_msgs::msg::PoseStamped user_input();
         geometry_msgs::msg::PoseStamped get_pose(float x, float y, float z);
         void init();
         void run();
+        moveit_msgs::msg::MotionPlanRequest createMotionPlanRequest();
+        moveit_msgs::msg::Constraints createPoseGoal(const geometry_msgs::msg::PoseStamped& target_pose);
+        moveit_msgs::msg::MotionSequenceRequest createSequenceRequest(const moveit_msgs::msg::MotionPlanRequest& goal_motion_request);
+        rclcpp_action::Client<moveit_msgs::action::HybridPlanner>::SendGoalOptions createGoalOptions();
 
     private:
         rclcpp::Node::SharedPtr m_node;
@@ -66,6 +71,10 @@ class HybridPlanningInterface
         std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
         std::string m_planning_group;
         std::shared_ptr<moveit::core::RobotState> m_robot_state;
+        rclcpp::Service<arc_interfaces::srv::ArcTargetPose>::SharedPtr m_target_pose_service;
+        void target_pose_service_callback(
+            const std::shared_ptr<arc_interfaces::srv::ArcTargetPose::Request> request,
+            std::shared_ptr<arc_interfaces::srv::ArcTargetPose::Response> response);
 
 };
 

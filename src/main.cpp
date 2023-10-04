@@ -9,12 +9,13 @@ int main(int argc, char** argv)
     rclcpp::Node::SharedPtr node = std::make_shared<rclcpp::Node>("hybrid_planning_test_node", "", node_options);
 
     HybridPlanningInterface HPI(node);
-    std::thread run_HPI([&HPI]() {
-        HPI.run();
-    });
+    HPI.init();
+    //std::thread run_HPI([&HPI]() {
+    //    HPI.run();
+    //});
 
     rclcpp::spin(node);
-    run_HPI.join();
+    //run_HPI.join();
     rclcpp::shutdown();
     return 0;
 }
