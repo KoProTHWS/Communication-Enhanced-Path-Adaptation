@@ -40,6 +40,7 @@
 #include <rclcpp/utilities.hpp>
 #include <rclcpp_action/client_goal_handle.hpp>
 #include <rclcpp_action/create_client.hpp>
+#include <std_srvs/srv/trigger.hpp>
 #include "arc_interfaces/srv/arc_target_pose.hpp"
 
 using namespace std::chrono_literals;
@@ -72,9 +73,13 @@ class HybridPlanningInterface
         std::string m_planning_group;
         std::shared_ptr<moveit::core::RobotState> m_robot_state;
         rclcpp::Service<arc_interfaces::srv::ArcTargetPose>::SharedPtr m_target_pose_service;
+        rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr m_cancel_all_goal_service;
         void target_pose_service_callback(
             const std::shared_ptr<arc_interfaces::srv::ArcTargetPose::Request> request,
             std::shared_ptr<arc_interfaces::srv::ArcTargetPose::Response> response);
+        void cancel_all_goal_service_callback(
+            const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+            std::shared_ptr<std_srvs::srv::Trigger::Response> response);
 
 };
 

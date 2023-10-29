@@ -15,9 +15,11 @@ HybridPlanningInterface::HybridPlanningInterface(const rclcpp::Node::SharedPtr& 
 	}
 	m_hp_action_client = rclcpp_action::create_client<moveit_msgs::action::HybridPlanner>(m_node, hybrid_planning_action_name);
 
-	m_target_pose_service = m_node->create_service<arc_interfaces::srv::ArcTargetPose>("move_to_target_pose", 
+	m_target_pose_service = m_node->create_service<arc_interfaces::srv::ArcTargetPose>("/arc_planning_interface/move_to_target_pose", 
         std::bind(&HybridPlanningInterface::target_pose_service_callback, this, std::placeholders::_1, std::placeholders::_2));
 
+    m_cancel_all_goal_service = m_node->create_service<std_srvs::srv::Trigger>("/arc_planning_interface/cancel_all_goals", 
+        std::bind(&HybridPlanningInterface::cancel_all_goal_service_callback, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void HybridPlanningInterface::init()
@@ -50,6 +52,12 @@ bool HybridPlanningInterface::move(const geometry_msgs::msg::PoseStamped& target
     auto goal_action_request = moveit_msgs::action::HybridPlanner::Goal();
     goal_action_request.planning_group = m_planning_group;
     goal_action_request.motion_sequence = sequence_request;
+
+    goal_motion_request.max_acceleration_scaling_factor = 0.01;
+    goal_motion_request.max_velocity_scaling_factor = 0.01;
+
+    // reduce speed
+    goal_motion_request.max_cartesian_speed = 0.1;
     
     auto send_goal_options = createGoalOptions();
     RCLCPP_INFO(LOGGER, "Sending hybrid planning goal");
@@ -200,15 +208,25 @@ void HybridPlanningInterface::target_pose_service_callback(
     response->success = move(target_pose);
 }
 
+void HybridPlanningInterface::cancel_all_goal_service_callback(
+    const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+    std::shared_ptr<std_srvs::srv::Trigger::Response> response)
+{
+    RCLCPP_INFO(LOGGER, "Received cancel all goal request");
+    m_hp_action_client->async_cancel_all_goals();
+    response->success = true;
+}
+
 void HybridPlanningInterface::run()
 {
 	try {
 		while (true) {
-			auto target_pose = get_pose(0.26, 0.5, 0.2);
+			auto target_pose = get_pose(0.17, 0.5, 0.25);
 			move(target_pose);
-			rclcpp::sleep_for(5s);
-			target_pose = get_pose(0.26, 0.5, 0.45);
+			rclcpp::sleep_for(2s);
+			target_pose = get_pose(-0.4, 0.5, 0.25);
 			move(target_pose);
+            rclcpp::sleep_for(2s);
 		}
 	} catch (const std::exception& e) {
 		RCLCPP_ERROR(LOGGER, "Exception thrown: %s", e.what());

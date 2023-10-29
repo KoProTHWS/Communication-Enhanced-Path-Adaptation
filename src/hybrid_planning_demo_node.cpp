@@ -39,7 +39,6 @@
 #include <thread>
 
 #include <moveit/planning_scene_monitor/planning_scene_monitor.h>
-#include <moveit/planning_scene_interface/planning_scene_interface.h>
 #include <moveit/robot_model_loader/robot_model_loader.h>
 #include <moveit/planning_interface/planning_interface.h>
 #include <moveit/planning_scene/planning_scene.h>
@@ -56,7 +55,12 @@
 #include <rclcpp/node_options.hpp>
 #include <rclcpp/parameter_value.hpp>
 #include <rclcpp/qos.hpp>
+#include <rclcpp/version.h>
+#if RCLCPP_VERSION_GTE(20, 0, 0)
+#include <rclcpp/event_handler.hpp>
+#else
 #include <rclcpp/qos_event.hpp>
+#endif
 #include <rclcpp/subscription.hpp>
 #include <rclcpp/timer.hpp>
 #include <rclcpp/utilities.hpp>
@@ -108,7 +112,7 @@ public:
     // Add new collision object as soon as global trajectory is available.
     global_solution_subscriber_ = node_->create_subscription<moveit_msgs::msg::MotionPlanResponse>(
         "global_trajectory", rclcpp::SystemDefaultsQoS(),
-        [this](const moveit_msgs::msg::MotionPlanResponse::SharedPtr /* unused */) {
+        [this](const moveit_msgs::msg::MotionPlanResponse::ConstSharedPtr& /* unused */) {
           // Remove old collision objects
           collision_object_1_.operation = collision_object_1_.REMOVE;
 
@@ -132,15 +136,43 @@ public:
           collision_object_3_.operation = collision_object_3_.ADD;
 
           // Add object to planning scene
-          // moveit::planning_interface::PlanningSceneInterface psi;
-          // psi.applyCollisionObject(collision_object_2_);
-          // psi.applyCollisionObject(collision_object_3_);
-          // psi.applyCollisionObject(collision_object_1_);
+          {  // Lock PlanningScene
+            planning_scene_monitor::LockedPlanningSceneRW scene(planning_scene_monitor_);
+            scene->processCollisionObjectMsg(collision_object_2_);
+            scene->processCollisionObjectMsg(collision_object_3_);
+            scene->processCollisionObjectMsg(collision_object_1_);
+          }  // Unlock PlanningScene
         });
   }
 
   void run()
   {
+    RCLCPP_INFO(LOGGER, "Initialize Planning Scene Monitor");
+    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node_->get_clock());
+
+    planning_scene_monitor_ = std::make_shared<planning_scene_monitor::PlanningSceneMonitor>(node_, "robot_description",
+                                                                                             "planning_scene_monitor");
+    if (!planning_scene_monitor_->getPlanningScene())
+    {
+      RCLCPP_ERROR(LOGGER, "The planning scene was not retrieved!");
+      return;
+    }
+    else
+    {
+      planning_scene_monitor_->startStateMonitor();
+      planning_scene_monitor_->providePlanningSceneService();  // let RViz display query PlanningScene
+      planning_scene_monitor_->setPlanningScenePublishingFrequency(100);
+      planning_scene_monitor_->startPublishingPlanningScene(planning_scene_monitor::PlanningSceneMonitor::UPDATE_SCENE,
+                                                            "/planning_scene");
+      planning_scene_monitor_->startSceneMonitor();
+    }
+
+    if (!planning_scene_monitor_->waitForCurrentRobotState(node_->now(), 5))
+    {
+      RCLCPP_ERROR(LOGGER, "Timeout when waiting for /joint_states updates. Is the robot running?");
+      return;
+    }
+
     if (!hp_action_client_->wait_for_action_server(20s))
     {
       RCLCPP_ERROR(LOGGER, "Hybrid planning action server not available after waiting");
@@ -157,8 +189,10 @@ public:
     collision_object_1_.operation = collision_object_1_.ADD;
 
     // Add object to planning scene
-    // moveit::planning_interface::PlanningSceneInterface psi;
-    // psi.applyCollisionObject(collision_object_1_);
+    {  // Lock PlanningScene
+      planning_scene_monitor::LockedPlanningSceneRW scene(planning_scene_monitor_);
+      scene->processCollisionObjectMsg(collision_object_1_);
+    }  // Unlock PlanningScene
 
     RCLCPP_INFO(LOGGER, "Wait 2s for the collision object");
     rclcpp::sleep_for(2s);
@@ -171,9 +205,15 @@ public:
     // Create a RobotState and JointModelGroup
     const auto robot_state = std::make_shared<moveit::core::RobotState>(robot_model);
     const moveit::core::JointModelGroup* joint_model_group = robot_state->getJointModelGroup(planning_group);
+
     // Configure a valid robot state
     robot_state->setToDefaultValues(joint_model_group, "ready");
     robot_state->update();
+    // Lock the planning scene as briefly as possible
+    {
+      planning_scene_monitor::LockedPlanningSceneRW locked_planning_scene(planning_scene_monitor_);
+      locked_planning_scene->setCurrentState(*robot_state);
+    }
 
     // Create desired motion goal
     moveit_msgs::msg::MotionPlanRequest goal_motion_request;
@@ -187,29 +227,13 @@ public:
     goal_motion_request.planner_id = "ompl";
     goal_motion_request.pipeline_id = "ompl";
 
-    auto const target_pose = []{
-        geometry_msgs::msg::PoseStamped msg;
-        msg.header.frame_id = "world";
-        msg.pose.position.x = -0.26;
-        msg.pose.position.y = 0.50;
-        msg.pose.position.z = 0.3;
+    moveit::core::RobotState goal_state(robot_model);
+    std::vector<double> joint_values = {0.0, -1.59, 0.0, -1.43, 1.571, 0.785 };
+    goal_state.setJointGroupPositions(joint_model_group, joint_values);
 
-        msg.pose.orientation.x = 1.0; 
-        msg.pose.orientation.y = 0.0;
-        msg.pose.orientation.z = 0.0;
-        msg.pose.orientation.w = 0.0;
-
-        return msg;
-    }();
-    
-    std::vector<double> tolerance_pose(3, 0.01);
-    std::vector<double> tolerance_angle(3, 0.01);
-
-    moveit_msgs::msg::Constraints pose_goal =
-    kinematic_constraints::constructGoalConstraints("tool0", target_pose, tolerance_pose, tolerance_angle);
-
-    goal_motion_request.group_name = planning_group;
-    goal_motion_request.goal_constraints.push_back(pose_goal);
+    goal_motion_request.goal_constraints.resize(1);
+    goal_motion_request.goal_constraints[0] =
+        kinematic_constraints::constructGoalConstraints(goal_state, joint_model_group);
 
     // Create Hybrid Planning action request
     moveit_msgs::msg::MotionSequenceItem sequence_item;
@@ -244,9 +268,9 @@ public:
           }
         };
     send_goal_options.feedback_callback =
-        [](rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::SharedPtr /*unused*/,
-           const std::shared_ptr<const moveit_msgs::action::HybridPlanner::Feedback> feedback) {
-          RCLCPP_INFO(LOGGER, feedback->feedback.c_str());
+        [](const rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::SharedPtr& /*unused*/,
+           const std::shared_ptr<const moveit_msgs::action::HybridPlanner::Feedback>& feedback) {
+          RCLCPP_INFO_STREAM(LOGGER, feedback->feedback);
         };
 
     RCLCPP_INFO(LOGGER, "Sending hybrid planning goal");

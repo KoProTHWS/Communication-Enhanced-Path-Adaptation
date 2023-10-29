@@ -16,7 +16,7 @@ planning_pipelines:
   namespace: ""
   pipeline_names: ["ompl"]
 plan_request_params:
-  planning_attempts: 3
+  planning_attempts: 15
   planning_pipeline: ompl
-  max_velocity_scaling_factor: 1.0
-  max_acceleration_scaling_factor: 1.0
+  max_velocity_scaling_factor: 0.2
+  max_acceleration_scaling_factor: 0.2

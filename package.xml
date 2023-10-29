@@ -15,6 +15,8 @@
   <depend>moveit_task_constructor_core</depend>
   <depend>moveit2_tutorials</depend>
   <depend>arc_interfaces</depend>
+  <depend>std_srvs</depend>
+  <depend>std_msgs</depend>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
