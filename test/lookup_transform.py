@@ -23,12 +23,12 @@ class TF2LookupNode(Node):
                 transform.transform.translation.y,
                 transform.transform.translation.z
             ))
-            self.get_logger().info('Transform (rotation): x={:.2f}, y={:.2f}, z={:.2f}, w={:.2f}'.format(
-                transform.transform.rotation.x,
-                transform.transform.rotation.y,
-                transform.transform.rotation.z,
-                transform.transform.rotation.w
-            ))
+            #self.get_logger().info('Transform (rotation): x={:.2f}, y={:.2f}, z={:.2f}, w={:.2f}'.format(
+            #    transform.transform.rotation.x,
+            #    transform.transform.rotation.y,
+            #    transform.transform.rotation.z,
+            #    transform.transform.rotation.w
+            #))
         except Exception as e:
             self.get_logger().warn('TF Lookup failed: {}'.format(e))
 
