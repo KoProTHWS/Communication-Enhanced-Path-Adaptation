@@ -30,10 +30,10 @@ class ServiceClientNode(Node):
         request.pose = taget_pose
 
         future = self._move_target_client.call_async(request)
-        #rclpy.spin_until_future_complete(self, future)
+        rclpy.spin_until_future_complete(self, future)
         
         if future.result() is not None:
-            self.get_logger().info(f'Received response: {future.result().response}')
+            self.get_logger().info(f'Received response: {future.result().success}')
         else:
             self.get_logger().error('Exception while calling service: %r' % future.exception())
 
