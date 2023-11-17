@@ -251,17 +251,6 @@ def generate_launch_description(*args, **kwargs):
     )
     robot_description_semantic = {"robot_description_semantic": robot_description_semantic_content}
 
-    robot_controllers = PathJoinSubstitution(
-        [FindPackageShare(runtime_config_package), "config", "ur_controller.yaml"]
-    )
-    robot_description_kinematics = PathJoinSubstitution(
-        [FindPackageShare(moveit_config_package), "config", "kinematics.yaml"]
-    )
-
-    # robot_description_planning = {
-    # "robot_description_planning": load_yaml_abs(str(joint_limit_params.perform(context)))
-    # }
-
     # The global planner uses the typical OMPL parameters
     planning_pipelines_config = {
         "move_group": {
@@ -281,25 +270,89 @@ def generate_launch_description(*args, **kwargs):
         controllers_yaml["scaled_joint_trajectory_controller"]["default"] = False
         controllers_yaml["joint_trajectory_controller"]["default"] = True
 
+    moveit_controllers = {
+        "moveit_simple_controller_manager": controllers_yaml,
+        "moveit_controller_manager": "moveit_simple_controller_manager/MoveItSimpleControllerManager",
+    }
+
+    # Servo node for realtime control
+    servo_yaml = load_yaml("arc_moveit_config", "config/ur_servo.yaml")
+    servo_params = {"moveit_servo": servo_yaml}
+
+
+    kinematics_yaml = load_yaml(
+        "arc_hybrid_planner", "config/hybrid_kinematics.yaml"
+    )
+    global_planner_param = load_yaml(
+        "arc_hybrid_planner", "config/global_planner.yaml"
+    )
+    local_planner_param = load_yaml(
+        "arc_hybrid_planner", "config/local_planner.yaml"
+    )
+    hybrid_planning_manager_param = load_yaml(
+        "arc_hybrid_planner", "config/hybrid_planning_manager.yaml"
+    )
+
     common_hybrid_planning_param = load_yaml(
         "arc_hybrid_planner", "config/common_hybrid_planning_params.yaml"
     )
 
-    demonode = Node(
-        package="arc_hybrid_planner",
-        executable="hybrid_planning_interface_test",
-        name="hybrid_planning_interface_test",
-        output="screen",
-        parameters=[
-            robot_description,
-            robot_description_semantic,
-            common_hybrid_planning_param,
+    # Generate launch description with multiple components
+    container = ComposableNodeContainer(
+        name="hybrid_planning_container",
+        namespace="/",
+        package="rclcpp_components",
+        executable="component_container",
+        composable_node_descriptions=[
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::GlobalPlannerComponent",
+                name="global_planner",
+                parameters=[
+                    common_hybrid_planning_param,
+                    global_planner_param,
+                    robot_description,
+                    robot_description_semantic,
+                    kinematics_yaml,
+                    planning_pipelines_config,
+                    joint_limit_params,
+                    planning_pipelines_config,
+                    moveit_controllers,
+
+                ],
+            ),
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::LocalPlannerComponent",
+                name="local_planner",
+                parameters=[
+                    common_hybrid_planning_param,
+                    local_planner_param,
+                    robot_description,
+                    robot_description_semantic,
+                    joint_limit_params,
+                    kinematics_yaml,
+                    servo_params,
+                ],
+            ),
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::HybridPlanningManager",
+                name="hybrid_planning_manager",
+                parameters=[
+                    common_hybrid_planning_param,
+                    hybrid_planning_manager_param,
+                    planning_pipelines_config,
+                    joint_limit_params,
+                    kinematics_yaml,
+                    ],
+            ),
         ],
+        output="screen",
     )
 
-
     nodes_to_start = [
-        demonode,
+        container
         ]
 
     return LaunchDescription(declared_arguments + nodes_to_start)

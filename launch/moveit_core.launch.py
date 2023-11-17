@@ -167,7 +167,6 @@ def generate_launch_description(*args, **kwargs):
     prefix = LaunchConfiguration("prefix")
     use_sim_time = LaunchConfiguration("use_sim_time")
     launch_rviz = LaunchConfiguration("launch_rviz")
-    launch_servo = LaunchConfiguration("launch_servo")
 
     joint_limit_params = PathJoinSubstitution(
         [FindPackageShare(description_package), "config", ur_type, "joint_limits.yaml"]
@@ -258,10 +257,6 @@ def generate_launch_description(*args, **kwargs):
         [FindPackageShare(moveit_config_package), "config", "kinematics.yaml"]
     )
 
-    # robot_description_planning = {
-    # "robot_description_planning": load_yaml_abs(str(joint_limit_params.perform(context)))
-    # }
-
     # The global planner uses the typical OMPL parameters
     planning_pipelines_config = {
         "move_group": {
@@ -281,25 +276,72 @@ def generate_launch_description(*args, **kwargs):
         controllers_yaml["scaled_joint_trajectory_controller"]["default"] = False
         controllers_yaml["joint_trajectory_controller"]["default"] = True
 
-    common_hybrid_planning_param = load_yaml(
-        "arc_hybrid_planner", "config/common_hybrid_planning_params.yaml"
-    )
+    moveit_controllers = {
+        "moveit_simple_controller_manager": controllers_yaml,
+        "moveit_controller_manager": "moveit_simple_controller_manager/MoveItSimpleControllerManager",
+    }
 
-    demonode = Node(
-        package="arc_hybrid_planner",
-        executable="hybrid_planning_interface_test",
-        name="hybrid_planning_interface_test",
+    trajectory_execution = {
+        "moveit_manage_controllers": False,
+        "trajectory_execution.allowed_execution_duration_scaling": 1.2,
+        "trajectory_execution.allowed_goal_duration_margin": 0.5,
+        "trajectory_execution.allowed_start_tolerance": 0.01,
+    }
+
+    planning_scene_monitor_parameters = {
+        "publish_planning_scene": True,
+        "publish_geometry_updates": True,
+        "publish_state_updates": True,
+        "publish_transforms_updates": True,
+    }
+
+    warehouse_ros_config = {
+        "warehouse_plugin": "warehouse_ros_sqlite::DatabaseConnection",
+        "warehouse_host": warehouse_sqlite_path,
+    }
+
+    # Start the actual move_group node/action server
+    move_group_node = Node(
+        package="moveit_ros_move_group",
+        executable="move_group",
         output="screen",
         parameters=[
             robot_description,
             robot_description_semantic,
-            common_hybrid_planning_param,
+            robot_description_kinematics,
+            # robot_description_planning,
+            planning_pipelines_config,
+            trajectory_execution,
+            moveit_controllers,
+            planning_scene_monitor_parameters,
+            {"use_sim_time": use_sim_time},
+            warehouse_ros_config,
         ],
     )
 
+    # rviz with moveit configuration
+    rviz_config_file = PathJoinSubstitution(
+        [FindPackageShare(moveit_config_package), "rviz", "view_robot.rviz"]
+    )
+    rviz_node = Node(
+        package="rviz2",
+        condition=IfCondition(launch_rviz),
+        executable="rviz2",
+        name="rviz2_moveit",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            planning_pipelines_config,
+            robot_description_kinematics,
+            warehouse_ros_config,
+        ],
+    )
 
     nodes_to_start = [
-        demonode,
+        move_group_node, 
+        rviz_node
         ]
 
     return LaunchDescription(declared_arguments + nodes_to_start)

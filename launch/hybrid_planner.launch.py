@@ -1,34 +1,3 @@
-# Copyright (c) 2021 PickNik, Inc.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#    * Redistributions of source code must retain the above copyright
-#      notice, this list of conditions and the following disclaimer.
-#
-#    * Redistributions in binary form must reproduce the above copyright
-#      notice, this list of conditions and the following disclaimer in the
-#      documentation and/or other materials provided with the distribution.
-#
-#    * Neither the name of the {copyright_holder} nor the names of its
-#      contributors may be used to endorse or promote products derived from
-#      this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
-#
-# Author: Denis Stogl
-
 import os
 
 from launch import LaunchDescription
@@ -94,7 +63,7 @@ def generate_launch_description(*args, **kwargs):
     declared_arguments.append(
         DeclareLaunchArgument(
             "description_file",
-            default_value="ur_custom.urdf.xacro",
+            default_value="ur.urdf.xacro",
             description="URDF/XACRO description file with the robot.",
         )
     )
@@ -251,16 +220,9 @@ def generate_launch_description(*args, **kwargs):
     )
     robot_description_semantic = {"robot_description_semantic": robot_description_semantic_content}
 
-    robot_controllers = PathJoinSubstitution(
-        [FindPackageShare(runtime_config_package), "config", "ur_controller.yaml"]
-    )
     robot_description_kinematics = PathJoinSubstitution(
         [FindPackageShare(moveit_config_package), "config", "kinematics.yaml"]
     )
-
-    # robot_description_planning = {
-    # "robot_description_planning": load_yaml_abs(str(joint_limit_params.perform(context)))
-    # }
 
     # The global planner uses the typical OMPL parameters
     planning_pipelines_config = {
@@ -281,25 +243,160 @@ def generate_launch_description(*args, **kwargs):
         controllers_yaml["scaled_joint_trajectory_controller"]["default"] = False
         controllers_yaml["joint_trajectory_controller"]["default"] = True
 
-    common_hybrid_planning_param = load_yaml(
-        "arc_hybrid_planner", "config/common_hybrid_planning_params.yaml"
-    )
+    moveit_controllers = {
+        "moveit_simple_controller_manager": controllers_yaml,
+        "moveit_controller_manager": "moveit_simple_controller_manager/MoveItSimpleControllerManager",
+    }
 
-    demonode = Node(
-        package="arc_hybrid_planner",
-        executable="hybrid_planning_interface_test",
-        name="hybrid_planning_interface_test",
+    trajectory_execution = {
+        "moveit_manage_controllers": False,
+        "trajectory_execution.allowed_execution_duration_scaling": 1.2,
+        "trajectory_execution.allowed_goal_duration_margin": 0.5,
+        "trajectory_execution.allowed_start_tolerance": 0.01,
+    }
+
+    planning_scene_monitor_parameters = {
+        "publish_planning_scene": True,
+        "publish_geometry_updates": True,
+        "publish_state_updates": True,
+        "publish_transforms_updates": True,
+    }
+
+    warehouse_ros_config = {
+        "warehouse_plugin": "warehouse_ros_sqlite::DatabaseConnection",
+        "warehouse_host": warehouse_sqlite_path,
+    }
+
+    # Start the actual move_group node/action server
+    move_group_node = Node(
+        package="moveit_ros_move_group",
+        executable="move_group",
         output="screen",
         parameters=[
             robot_description,
             robot_description_semantic,
-            common_hybrid_planning_param,
+            robot_description_kinematics,
+            # robot_description_planning,
+            planning_pipelines_config,
+            trajectory_execution,
+            moveit_controllers,
+            planning_scene_monitor_parameters,
+            {"use_sim_time": use_sim_time},
+            warehouse_ros_config,
         ],
     )
 
+    # rviz with moveit configuration
+    rviz_config_file = PathJoinSubstitution(
+        [FindPackageShare(moveit_config_package), "rviz", "view_robot.rviz"]
+    )
+    rviz_node = Node(
+        package="rviz2",
+        condition=IfCondition(launch_rviz),
+        executable="rviz2",
+        name="rviz2_moveit",
+        output="log",
+        arguments=["-d", rviz_config_file],
+        parameters=[
+            robot_description,
+            robot_description_semantic,
+            planning_pipelines_config,
+            robot_description_kinematics,
+            # robot_description_planning,
+            warehouse_ros_config,
+        ],
+    )
+
+    # Servo node for realtime control
+    servo_yaml = load_yaml("arc_moveit_config", "config/ur_servo.yaml")
+    servo_params = {"moveit_servo": servo_yaml}
+    #servo_node = Node(
+    #    package="moveit_servo",
+    #    condition=IfCondition(launch_servo),
+    #    executable="servo_node_main",
+    #    parameters=[
+    #        servo_params,
+    #        robot_description,
+    #        robot_description_semantic,
+    #    ],
+    #    output="screen",
+    #)
+
+    kinematics_yaml = load_yaml(
+        "arc_hybrid_planner", "config/hybrid_kinematics.yaml"
+    )
+    global_planner_param = load_yaml(
+        "arc_hybrid_planner", "config/global_planner.yaml"
+    )
+    local_planner_param = load_yaml(
+        "arc_hybrid_planner", "config/local_planner.yaml"
+    )
+    hybrid_planning_manager_param = load_yaml(
+        "arc_hybrid_planner", "config/hybrid_planning_manager.yaml"
+    )
+
+    common_hybrid_planning_param = load_yaml(
+        "arc_hybrid_planner", "config/common_hybrid_planning_params.yaml"
+    )
+
+    # Generate launch description with multiple components
+    container = ComposableNodeContainer(
+        name="hybrid_planning_container",
+        namespace="/",
+        package="rclcpp_components",
+        executable="component_container",
+        composable_node_descriptions=[
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::GlobalPlannerComponent",
+                name="global_planner",
+                parameters=[
+                    common_hybrid_planning_param,
+                    global_planner_param,
+                    robot_description,
+                    robot_description_semantic,
+                    kinematics_yaml,
+                    planning_pipelines_config,
+                    joint_limit_params,
+                    moveit_controllers,
+
+                ],
+            ),
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::LocalPlannerComponent",
+                name="local_planner",
+                parameters=[
+                    common_hybrid_planning_param,
+                    local_planner_param,
+                    robot_description,
+                    robot_description_semantic,
+                    planning_pipelines_config,
+                    joint_limit_params,
+                    kinematics_yaml,
+                    servo_params,
+                ],
+            ),
+            ComposableNode(
+                package="moveit_hybrid_planning",
+                plugin="moveit::hybrid_planning::HybridPlanningManager",
+                name="hybrid_planning_manager",
+                parameters=[
+                    common_hybrid_planning_param,
+                    hybrid_planning_manager_param,
+                    planning_pipelines_config,
+                    joint_limit_params,
+                    kinematics_yaml,
+                    ],
+            ),
+        ],
+        output="screen",
+    )
 
     nodes_to_start = [
-        demonode,
+        move_group_node, 
+        rviz_node, 
+        container
         ]
 
     return LaunchDescription(declared_arguments + nodes_to_start)
