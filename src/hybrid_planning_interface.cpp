@@ -20,6 +20,8 @@ HybridPlanningInterface::HybridPlanningInterface(const rclcpp::Node::SharedPtr& 
 
     m_cancel_all_goal_service = m_node->create_service<std_srvs::srv::Trigger>("/arc_planning_interface/cancel_all_goals", 
         std::bind(&HybridPlanningInterface::cancel_all_goal_service_callback, this, std::placeholders::_1, std::placeholders::_2));
+
+    m_hp_comm_publisher = m_node->create_publisher<arc_interfaces::msg::ArcHPComm>("/arc_planning_interface/hp_comm", 1);
 }
 
 void HybridPlanningInterface::init()
@@ -56,6 +58,27 @@ bool HybridPlanningInterface::move(const geometry_msgs::msg::PoseStamped& target
     goal_motion_request.max_acceleration_scaling_factor = 0.01;
     goal_motion_request.max_velocity_scaling_factor = 0.01;
 
+    goal_motion_request.max_cartesian_speed = 0.1;
+    
+    auto send_goal_options = createGoalOptions();
+    RCLCPP_INFO(LOGGER, "Sending hybrid planning goal");
+    auto goal_handle_future = m_hp_action_client->async_send_goal(goal_action_request, send_goal_options);
+    return true;
+}
+
+bool HybridPlanningInterface::move_blocking(const geometry_msgs::msg::PoseStamped& target_pose)
+{
+	moveit_msgs::msg::MotionPlanRequest goal_motion_request = createMotionPlanRequest();
+    goal_motion_request.goal_constraints.push_back(createPoseGoal(target_pose));
+    
+    moveit_msgs::msg::MotionSequenceRequest sequence_request = createSequenceRequest(goal_motion_request);
+    auto goal_action_request = moveit_msgs::action::HybridPlanner::Goal();
+    goal_action_request.planning_group = m_planning_group;
+    goal_action_request.motion_sequence = sequence_request;
+
+    goal_motion_request.max_acceleration_scaling_factor = 0.01;
+    goal_motion_request.max_velocity_scaling_factor = 0.01;
+
     // reduce speed
     goal_motion_request.max_cartesian_speed = 0.1;
     
@@ -63,25 +86,16 @@ bool HybridPlanningInterface::move(const geometry_msgs::msg::PoseStamped& target
     RCLCPP_INFO(LOGGER, "Sending hybrid planning goal");
     auto goal_handle_future = m_hp_action_client->async_send_goal(goal_action_request, send_goal_options);
 
-	// Get the goal handle from the future. This will block until the goal has been sent.
-	//auto goal_handle = goal_handle_future.get();
-	//if (!goal_handle) {
-	//	RCLCPP_ERROR(LOGGER, "Goal was rejected by server");
-	//	return false;
-	//}
-
-	// Wait for the server to be done with the goal
-	//auto result_future = m_hp_action_client->async_get_result(goal_handle);
-
-	return true;
+    return true;
 }
+
 
 moveit_msgs::msg::MotionPlanRequest HybridPlanningInterface::createMotionPlanRequest() 
 {
     moveit_msgs::msg::MotionPlanRequest request;
     moveit::core::robotStateToRobotStateMsg(*m_robot_state, request.start_state);
     request.group_name = m_planning_group;
-    request.num_planning_attempts = 10;
+    request.num_planning_attempts = 100;
     request.max_velocity_scaling_factor = 0.1;
     request.max_acceleration_scaling_factor = 0.1;
     request.allowed_planning_time = 2.0;
@@ -106,78 +120,50 @@ moveit_msgs::msg::MotionSequenceRequest HybridPlanningInterface::createSequenceR
     return sequence_request;
 }
 
+void HybridPlanningInterface::hp_action_result_callback(const rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::WrappedResult& result) {
+    arc_interfaces::msg::ArcHPComm hp_comm_msg;
+    switch (result.code)
+    {
+        case rclcpp_action::ResultCode::SUCCEEDED:
+            RCLCPP_INFO(LOGGER, "Hybrid planning goal succeeded");
+            is_planning_success = 1;
+            hp_comm_msg.status = 1; // 1 for success, 0 for failure
+            hp_comm_msg.message = "Hybrid planning goal succeeded";
+            hp_comm_msg.time_stamp = m_node->now();
+            m_hp_comm_publisher->publish(hp_comm_msg);
+            break;
+        case rclcpp_action::ResultCode::ABORTED:
+            RCLCPP_ERROR(LOGGER, "Hybrid planning goal was aborted");
+            is_planning_success = -1; // -1 for failure 1 for success 0 for not started
+            hp_comm_msg.status = 0; // 1 for success, 0 for failure
+            hp_comm_msg.message = "Hybrid planning goal aborted";
+            hp_comm_msg.time_stamp = m_node->now();
+            m_hp_comm_publisher->publish(hp_comm_msg);
+            return;
+        case rclcpp_action::ResultCode::CANCELED:
+            RCLCPP_ERROR(LOGGER, "Hybrid planning goal was canceled");
+            return;
+        case rclcpp_action::ResultCode::UNKNOWN:
+            RCLCPP_ERROR(LOGGER, "Hybrid planning goal failed");
+            return;
+        default:
+            RCLCPP_ERROR(LOGGER, "Unknown hybrid planning result code");
+            return;
+    }
+    RCLCPP_INFO(LOGGER, "Hybrid planning result received");
+}
+
 rclcpp_action::Client<moveit_msgs::action::HybridPlanner>::SendGoalOptions HybridPlanningInterface::createGoalOptions() {
     auto options = rclcpp_action::Client<moveit_msgs::action::HybridPlanner>::SendGoalOptions();
-    // Result callback setup
-    options.result_callback =
-			[](const rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::WrappedResult& result) {
-					switch (result.code)
-					{
-						case rclcpp_action::ResultCode::SUCCEEDED:
-							RCLCPP_INFO(LOGGER, "Hybrid planning goal succeeded");
-							break;
-						case rclcpp_action::ResultCode::ABORTED:
-							RCLCPP_ERROR(LOGGER, "Hybrid planning goal was aborted");
-							return;
-						case rclcpp_action::ResultCode::CANCELED:
-							RCLCPP_ERROR(LOGGER, "Hybrid planning goal was canceled");
-							return;
-						default:
-							RCLCPP_ERROR(LOGGER, "Unknown hybrid planning result code");
-							return;
-							RCLCPP_INFO(LOGGER, "Hybrid planning result received");
-					}
-				};
-
+    options.result_callback = std::bind(&HybridPlanningInterface::hp_action_result_callback, this, std::placeholders::_1);
     options.feedback_callback =
 				[](rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::SharedPtr /*unused*/,
 					const std::shared_ptr<const moveit_msgs::action::HybridPlanner::Feedback> feedback) {
-					RCLCPP_INFO(LOGGER, "Hybrid planning feedback received");
-					RCLCPP_INFO(LOGGER, feedback->feedback.c_str());
+					//RCLCPP_INFO(LOGGER, "Hybrid planning feedback received");
+					//RCLCPP_INFO(LOGGER, feedback->feedback.c_str());
 				};
 
     return options;
-}
-
-geometry_msgs::msg::PoseStamped HybridPlanningInterface::user_input()
-{
-    float x, y, z;
-    std::cout << "Enter target pose (or 'c' to cancel): " << std::endl;
-    std::cout << "Enter x: ";
-    std::cin >> x;
-    std::cout << "Enter y: ";
-    std::cin >> y;
-    std::cout << "Enter z: ";
-    std::cin >> z;
-
-    // Check for cancellation
-    if (std::cin.fail()) {
-        throw std::runtime_error("User canceled input.");
-    }
-
-    std::cout << "Moving to - x: " << x << " y: " << y << " z: " << z << std::endl;
-    std::cout << "Press 'c' to cancel or enter to continue: ";
-
-    // Check for user cancellation while waiting for input
-    char choice;
-    std::cin.ignore(); // Ignore any leftover characters in the input buffer
-    std::cin.get(choice);
-
-    if (choice == 'c') {
-        throw std::runtime_error("User canceled move.");
-    }
-
-    geometry_msgs::msg::PoseStamped target_pose;
-    target_pose.header.frame_id = "world";
-    target_pose.pose.position.x = x;
-    target_pose.pose.position.y = y;
-    target_pose.pose.position.z = z;
-    target_pose.pose.orientation.x = 1.0;
-    target_pose.pose.orientation.y = 0.0;
-    target_pose.pose.orientation.z = 0.0;
-    target_pose.pose.orientation.w = 0.0;
-
-    return target_pose;
 }
 
 geometry_msgs::msg::PoseStamped HybridPlanningInterface::get_pose(float x, float y, float z)
@@ -221,10 +207,10 @@ void HybridPlanningInterface::run()
 {
 	try {
 		while (true) {
-			auto target_pose = get_pose(0.17, 0.5, 0.25);
+			auto target_pose = get_pose(0.17, 0.5, 0.3);
 			move(target_pose);
 			rclcpp::sleep_for(2s);
-			target_pose = get_pose(-0.4, 0.5, 0.25);
+			target_pose = get_pose(-0.4, 0.5, 0.3);
 			move(target_pose);
             rclcpp::sleep_for(2s);
 		}

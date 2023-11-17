@@ -13,7 +13,7 @@ int main(int argc, char** argv)
     //std::thread run_HPI([&HPI]() {
     //    HPI.run();
     //});
-
+    //HPI.run();
     rclcpp::spin(node);
     //run_HPI.join();
     rclcpp::shutdown();

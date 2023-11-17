@@ -16,6 +16,7 @@
 #include <string>
 #include <thread>
 #include <rclcpp/node.hpp>
+#include <rclcpp/future_return_code.hpp>
 #include <rclcpp_action/client.hpp>
 #include <moveit_msgs/action/hybrid_planner.hpp>
 #include <moveit_msgs/msg/display_robot_state.hpp>
@@ -42,6 +43,7 @@
 #include <rclcpp_action/create_client.hpp>
 #include <std_srvs/srv/trigger.hpp>
 #include "arc_interfaces/srv/arc_target_pose.hpp"
+#include "arc_interfaces/msg/arc_hp_comm.hpp"
 
 using namespace std::chrono_literals;
 namespace
@@ -53,8 +55,8 @@ class HybridPlanningInterface
 {
     public:
         HybridPlanningInterface(const rclcpp::Node::SharedPtr& node);
-        bool move(const geometry_msgs::msg::PoseStamped& target_pose);
-        geometry_msgs::msg::PoseStamped user_input();
+        bool move(const geometry_msgs::msg::PoseStamped& target_pose); //async
+        bool move_blocking(const geometry_msgs::msg::PoseStamped& target_pose);  //blocking
         geometry_msgs::msg::PoseStamped get_pose(float x, float y, float z);
         void init();
         void run();
@@ -67,11 +69,13 @@ class HybridPlanningInterface
         rclcpp::Node::SharedPtr m_node;
         rclcpp_action::Client<moveit_msgs::action::HybridPlanner>::SharedPtr m_hp_action_client;
         rclcpp::Subscription<moveit_msgs::msg::MotionPlanResponse>::SharedPtr m_global_solution_subscriber;
+        rclcpp::Publisher<arc_interfaces::msg::ArcHPComm>::SharedPtr m_hp_comm_publisher;
         planning_scene_monitor::PlanningSceneMonitorPtr m_planning_scene_monitor;
         rclcpp::TimerBase::SharedPtr m_timer;
         std::shared_ptr<tf2_ros::Buffer> m_tf_buffer;
         std::string m_planning_group;
         std::shared_ptr<moveit::core::RobotState> m_robot_state;
+        int is_planning_success = 0;
         rclcpp::Service<arc_interfaces::srv::ArcTargetPose>::SharedPtr m_target_pose_service;
         rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr m_cancel_all_goal_service;
         void target_pose_service_callback(
@@ -80,6 +84,7 @@ class HybridPlanningInterface
         void cancel_all_goal_service_callback(
             const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
             std::shared_ptr<std_srvs::srv::Trigger::Response> response);
+        void hp_action_result_callback(const rclcpp_action::ClientGoalHandle<moveit_msgs::action::HybridPlanner>::WrappedResult& result);
 
 };
 
