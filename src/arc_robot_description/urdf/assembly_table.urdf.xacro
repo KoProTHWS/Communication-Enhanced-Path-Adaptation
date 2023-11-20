@@ -1,0 +1,111 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://ros.org/wiki/xacro" name="table">
+
+  <xacro:macro name="table" params="prefix parent *origin">
+
+    <joint name="${prefix}platform_origin_joint" type="fixed">
+      <xacro:insert_block name="origin" />
+      <parent link="${parent}" />
+      <child link="${prefix}platform" />
+    </joint>
+
+    <link name="${prefix}platform">
+      <visual>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+        <geometry>
+          <mesh filename="package://arc_robot_description/models/assemblytable/meshes/visual/station_decimate.dae" />
+        </geometry>
+      </visual>
+
+      <collision>
+        <geometry>
+          <mesh filename="package://arc_robot_description/models/assemblytable/meshes/collision/station_decimate.dae" />
+        </geometry>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+      </collision>
+
+      <inertial>
+        <mass value="100" />
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+
+    <link name="${prefix}cobottable">
+      <visual>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+        <geometry>
+          <mesh filename="package://arc_robot_description/models/cobottable/meshes/visual/cobottable_decimate.dae" />
+        </geometry>
+
+
+      </visual>
+
+      <collision>
+        <geometry>
+          <mesh filename="package://arc_robot_description/models/cobottable/meshes/collision/cobottable_decimate.dae" />
+        </geometry>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+      </collision>
+
+      <inertial>
+        <mass value="100" />
+        <inertia ixx="1.0" ixy="0.0" ixz="0.0" iyy="1.0" iyz="0.0" izz="1.0" />
+      </inertial>
+    </link>
+
+    <joint name="${prefix}platform_cobottable_joint" type="fixed">
+      <origin rpy="0 0 0" xyz="1.53 -0.8 0" />
+      <parent link="${prefix}platform" />
+      <child link="${prefix}cobottable" />
+    </joint>
+
+
+    <link name="${prefix}plate">
+      <visual>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+        <geometry>
+          <box size="0.24 0.24 0.01" />
+        </geometry>
+      </visual>
+
+      <collision>
+        <geometry>
+          <box size="0.24 0.24 0.01" />
+        </geometry>
+        <origin rpy="0.0 0 0" xyz="0 0 0" />
+      </collision>
+
+      <inertial>
+        <mass value="1" />
+        <inertia ixx="0.166667" ixy="0.0" ixz="0.0" iyy="0.166667" iyz="0.0" izz="0.166667" />
+      </inertial>
+    </link>
+
+    <joint name="${prefix}plate_cobottable_joint" type="fixed">
+      <origin rpy="0 0 0" xyz="0.1257 0.15370 0.967056" />
+      <parent link="${prefix}cobottable" />
+      <child link="${prefix}plate" />
+    </joint>
+
+
+    <gazebo reference="{prefix}platform">
+      <material>Gazebo/Grey</material>
+      <selfCollide>true</selfCollide>
+    </gazebo>
+
+    <gazebo reference="cobottable">
+      <material>Gazebo/Grey</material>
+      <selfCollide>true</selfCollide>
+    </gazebo>
+
+    <gazebo reference="plate">
+      <material>Gazebo/Grey</material>
+      <selfCollide>true</selfCollide>
+
+    </gazebo>
+
+
+  </xacro:macro>
+
+</robot>
