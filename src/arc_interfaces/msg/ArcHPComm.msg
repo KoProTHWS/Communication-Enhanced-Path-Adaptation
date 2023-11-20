@@ -1,0 +1,3 @@
+int64 status
+string message
+builtin_interfaces/Time time_stamp
