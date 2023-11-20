@@ -14,6 +14,7 @@ class TF2LookupNode(Node):
         self.source_frame = "tool0"
         self.target_frame = "base_link"
         self.create_timer(0.40, self.lookup_transform)  # Call every 1 second
+        self.pub = self.create_publisher(TransformStamped, '/tf2_lookup_node/transform', 1)
 
     def lookup_transform(self):
         try:
@@ -29,6 +30,7 @@ class TF2LookupNode(Node):
             #    transform.transform.rotation.z,
             #    transform.transform.rotation.w
             #))
+            self.pub.publish(transform)
         except Exception as e:
             self.get_logger().warn('TF Lookup failed: {}'.format(e))
 
