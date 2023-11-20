@@ -1,3 +1,6 @@
+__pycache__/
+log/
+.vscode/
 
 moveit-pose*
 main_o*
@@ -171,3 +174,4 @@ devel/
 install/
 log/
 .catkin_workspace
+
