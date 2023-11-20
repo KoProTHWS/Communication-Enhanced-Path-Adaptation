@@ -1,0 +1,45 @@
+<?xml version='1.0'?>
+<sdf version="1.7">
+  <model name="cobottable">
+    <pose>0 0 0 0 0 0</pose>
+    <static>true</static>
+    <link name="cobottable_link">
+      <inertial>
+        <mass>100</mass>
+        <inertia>
+          <ixx>1</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>1</iyy>
+          <iyz>0</iyz>
+          <izz>1</izz>
+        </inertia>
+      </inertial>
+
+      <collision name="cobottable_collision">
+        <geometry>
+          <mesh>
+            <uri>model://cobottable/meshes/collision/cobottable_decimate_origin.dae</uri>
+          </mesh>
+        </geometry>
+      </collision>
+
+      <visual name="cobottable_visual">
+        <material>
+          <lighting>1</lighting>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+        <geometry>
+          <mesh>
+            <uri>model://cobottable/meshes/collision/cobottable_decimate_origin.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+  </model>
+
+
+</sdf>

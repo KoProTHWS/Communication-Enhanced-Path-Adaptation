@@ -1,3 +1,10 @@
+__pycache__/
+log/
+.vscode/
+
+moveit-pose*
+main_o*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -167,3 +174,4 @@ devel/
 install/
 log/
 .catkin_workspace
+

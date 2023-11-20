@@ -1,0 +1,49 @@
+<?xml version="1.0"?>
+
+<robot name="arc_env">
+
+  <link name="world"/>
+  
+  <!-- Definition of the lik from mesh -->
+  <link name="cobot_table" type="fixed">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://arc_robot_description/meshes/cobottable_decimate_origin.dae"/>
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1"/>
+      </material>
+    </visual>
+  </link>
+
+  <!-- Definition of the lik from mesh -->
+  <link name="work_table" type="fixed">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <geometry>
+        <mesh filename="package://arc_robot_description/meshes/arbeitsplatz_v4.dae" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="grey">
+        <color rgba="0.5 0.5 0.5 1"/>
+      </material>
+    </visual>
+  </link>
+
+
+  <!-- Definition of the joint -->
+  <joint name="cobot_table_joint" type="fixed">
+    <parent link="world"/>
+    <child link="cobot_table"/>
+    <origin xyz="0 0 -0.50" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Definition of the joint -->
+  <joint name="work_table_joint" type="fixed">
+    <parent link="world"/>
+    <child link="work_table"/>
+    <origin xyz="0 0 -0.55" rpy="0 0 0"/>
+  </joint>
+
+
+</robot>

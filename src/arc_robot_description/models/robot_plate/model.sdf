@@ -1,0 +1,44 @@
+<?xml version='1.0'?>
+<sdf version='1.7'>
+
+  <model name='robot_plate'>
+    <pose>0 0 0 0 -0 0</pose>
+    <static>1</static>
+    <self_collide>0</self_collide>
+    <link name='robot_plate_link'>
+      <inertial>
+        <mass>1</mass>
+        <inertia>
+          <ixx>0.166667</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.166667</iyy>
+          <iyz>0</iyz>
+          <izz>0.166667</izz>
+        </inertia>
+      </inertial>
+      <visual name='robot_plate_visual'>
+        <geometry>
+          <box>
+            <size>0.245 0.245 0.01</size>
+          </box>
+        </geometry>
+        <material>
+          <lighting>1</lighting>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+      <collision name='robot_plate_collision'>
+        <geometry>
+          <box>
+            <size>0.245 0.245 0.009</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+  </model>
+
+</sdf>
