@@ -1,0 +1,34 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/balachandra/lib_ws/install/ur_robot_driver/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_moveit_config/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_dashboard_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_configs_utils/lib/python3.10/site-packages",
+        "/home/balachandra/lib_ws/install/srdfdom/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_task_constructor_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/launch_param_builder/lib/python3.10/site-packages",
+        "/home/balachandra/thesis_ws/build/zed_driver",
+        "/home/balachandra/thesis_ws/install/zed_driver/lib/python3.10/site-packages",
+        "/home/balachandra/thesis_ws/install/arc_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/balachandra/lib_ws/install/ur_robot_driver/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_moveit_config/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/ur_dashboard_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_configs_utils/lib/python3.10/site-packages",
+        "/home/balachandra/lib_ws/install/srdfdom/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_task_constructor_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/moveit_msgs/local/lib/python3.10/dist-packages",
+        "/home/balachandra/lib_ws/install/launch_param_builder/lib/python3.10/site-packages",
+        "/home/balachandra/thesis_ws/build/zed_driver",
+        "/home/balachandra/thesis_ws/install/zed_driver/lib/python3.10/site-packages",
+        "/home/balachandra/thesis_ws/install/arc_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
