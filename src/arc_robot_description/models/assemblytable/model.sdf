@@ -1,0 +1,79 @@
+<?xml version='1.0'?>
+<sdf version="1.7">
+
+  <model name="assemblytable">
+    <pose>0 0 0 0 0 0</pose>
+    <static>true</static>
+    <link name="platform_link">
+      <inertial>
+        <mass>100</mass>
+        <inertia>
+          <ixx>16.66667</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>16.66667</iyy>
+          <iyz>0</iyz>
+          <izz>16.66667</izz>
+        </inertia>
+      </inertial>
+      <collision name="platform_collision">
+        <geometry>
+          <mesh>
+            <uri>model://assemblytable/meshes/collision/station_decimate_origin.dae</uri>
+          </mesh>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>1</mu>
+              <mu2>1</mu2>
+              <fdir1>0 0 0</fdir1>
+              <slip1>0</slip1>
+              <slip2>0</slip2>
+            </ode>
+            <torsional>
+              <coefficient>1</coefficient>
+              <patch_radius>0</patch_radius>
+              <surface_radius>0</surface_radius>
+              <use_patch_radius>1</use_patch_radius>
+              <ode>
+                <slip>0</slip>
+              </ode>
+            </torsional>
+          </friction>
+          <bounce>
+            <restitution_coefficient>0</restitution_coefficient>
+            <threshold>1e+06</threshold>
+          </bounce>
+          <contact>
+            <ode>
+              <soft_cfm>0</soft_cfm>
+              <soft_erp>0.2</soft_erp>
+              <kp>500000</kp>
+              <kd>100</kd>
+              <max_vel>0.00</max_vel>
+              <min_depth>0.00</min_depth>
+            </ode>
+          </contact>
+        </surface>
+      </collision>
+      <visual name="platform_visual">
+        <material>
+          <lighting>1</lighting>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+        <geometry>
+          <mesh>
+            <uri>model://assemblytable/meshes/visual/station_decimate_origin.dae</uri>
+          </mesh>
+        </geometry>
+      </visual>
+    </link>
+    <static>1</static>
+  </model>
+
+
+</sdf>
